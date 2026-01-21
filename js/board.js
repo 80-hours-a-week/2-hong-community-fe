@@ -164,39 +164,37 @@ function initDetailPage() {
     const commentInput = document.getElementById('comment-input');
     const submitBtn = document.getElementById('comment-submit-btn');
     
-    commentInput.addEventListener('input', () => {
-        if (commentInput.value.trim().length > 0) {
-            submitBtn.disabled = false;
-            submitBtn.classList.add('active');
-        } else {
-            submitBtn.disabled = true;
-            submitBtn.classList.remove('active');
-        }
-    });
+    if (commentInput && submitBtn) {
+        commentInput.addEventListener('input', () => {
+            if (commentInput.value.trim().length > 0) {
+                submitBtn.disabled = false;
+                submitBtn.classList.add('active');
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.remove('active');
+            }
+        });
+    }
 }
 
 function updateLikeDisplay(count) {
     const likeBtn = document.getElementById('like-btn');
     const countSpan = document.getElementById('detail-likes');
     
-    countSpan.innerText = formatCountDisplay(count);
+    if (countSpan) countSpan.innerText = formatCountDisplay(count);
     
-    if (isLiked) {
-        likeBtn.classList.add('active');
-    } else {
-        likeBtn.classList.remove('active');
+    if (likeBtn) {
+        if (isLiked) {
+            likeBtn.classList.add('active');
+        } else {
+            likeBtn.classList.remove('active');
+        }
     }
 }
 
 function toggleLike() {
     const countSpan = document.getElementById('detail-likes');
     let currentCount = parseInt(countSpan.innerText.replace('k', '000')); // Simple parse for now
-    // Re-using dummy logic: baseline is 123.
-    // If not liked -> becomes 124 (active). If liked -> becomes 123 (inactive).
-    
-    // For proper logic, we should store the raw number. 
-    // But since it's dummy, let's just toggle visual +1/-1 based on text is risky if it's '1k'.
-    // Let's just hardcode the transition for the dummy '123' case shown in image.
     
     let baseCount = 123;
     
@@ -253,6 +251,54 @@ function confirmDelete() {
     }
 }
 
+// Edit Page Logic
+function initEditPage() {
+    const editForm = document.getElementById('edit-form');
+    if (!editForm) return;
+
+    // Pre-fill Dummy Data
+    const dummyData = {
+        title: '제목 1',
+        content: `무엇을 얘기할까요? 아무말이라면, 삶은 항상 놀라운 모험이라고 생각합니다. 우리는 매일 새로운 경험을 하고 배우며 성장합니다. 때로는 어려움과 도전이 있지만, 그것들이 우리를 더 강하고 지혜롭게 만듭니다. 또한 우리는 주변의 사람들과 연결되며 사랑과 지지를 받습니다. 그래서 우리의 삶은 소중하고 의미가 있습니다.\n\n자연도 아름다운 이야기입니다. 우리 주변의 자연은 끝없는 아름다움과 신비로움을 담고 있습니다. 산, 바다, 숲, 하늘 등 모든 것이 우리를 놀라게 만들고 감동시킵니다. 자연은 우리의 생명과 안정을 지키며 우리에게 힘을 주는 곳입니다.\n\n마지막으로, 지식을 향한 탐구는 항상 흥미로운 여정입니다. 우리는 끝없는 지식의 바다에서 배우고 발견할 수 있으며, 이것이 우리를 더 깊이 이해하고 세상을 더 넓게 보게 해줍니다. 그런 의미에서, 삶은 놀라움과 경이로움으로 가득 차 있습니다. 새로운 경험을 즐기고 항상 앞으로 나아가는 것이 중요하다고 생각합니다.`,
+        image: '기존 파일 명'
+    };
+
+    const titleInput = document.getElementById('edit-title-input');
+    const contentInput = document.getElementById('edit-content-input');
+    const fileNameDisplay = document.getElementById('file-name');
+    const fileInput = document.getElementById('file-input');
+
+    titleInput.value = dummyData.title;
+    contentInput.value = dummyData.content;
+    fileNameDisplay.innerText = dummyData.image;
+
+    // Title Limit Enforcement
+    titleInput.addEventListener('input', () => {
+        if (titleInput.value.length > 26) {
+            titleInput.value = titleInput.value.substring(0, 26);
+        }
+    });
+
+    // File Input Change
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            fileNameDisplay.innerText = e.target.files[0].name;
+        }
+    });
+}
+
+function handlePostUpdate(event) {
+    event.preventDefault();
+    
+    // In a real app, we would collect data and send to API
+    // const title = document.getElementById('edit-title-input').value;
+    // const content = document.getElementById('edit-content-input').value;
+    
+    alert('게시글이 수정되었습니다.');
+    location.href = 'post_detail.html';
+}
+
+
 // Init
 document.addEventListener('DOMContentLoaded', () => {
     // List Page Logic
@@ -265,4 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Detail Page Logic
     initDetailPage();
+
+    // Edit Page Logic
+    initEditPage();
 });
