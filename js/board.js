@@ -216,11 +216,85 @@ function createCommentElement(comment) {
             <p class="comment-text">${comment.content}</p>
         </div>
         <div class="edit-actions comment-actions">
-            <button class="btn-small" onclick="alert('수정 기능 구현 예정')">수정</button>
+            <button class="btn-small" onclick="toggleEditComment(${comment.id})">수정</button>
             <button class="btn-small" onclick="showDeleteModal('comment', ${comment.id})">삭제</button>
         </div>
     `;
     return div;
+}
+
+// Comment Edit Logic
+function toggleEditComment(commentId) {
+    const commentItem = document.getElementById(`comment-${commentId}`);
+    if (!commentItem) return;
+
+    const contentDiv = commentItem.querySelector('.comment-content');
+    const textP = contentDiv.querySelector('.comment-text');
+    const currentText = textP.innerText;
+
+    // Hide original text
+    textP.style.display = 'none';
+
+    // Check if edit form already exists
+    let editForm = contentDiv.querySelector('.edit-comment-form');
+    if (!editForm) {
+        editForm = document.createElement('div');
+        editForm.className = 'edit-comment-form';
+        editForm.innerHTML = `
+            <textarea class="comment-textarea" style="margin-top: 10px;">${currentText}</textarea>
+            <div style="text-align: right; margin-top: 5px; display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn-small" onclick="cancelEditComment(${commentId})">취소</button>
+                <button class="btn-small" style="background-color: #ACA0EB; color: white; border: none;" onclick="submitEditComment(${commentId})">수정 완료</button>
+            </div>
+        `;
+        contentDiv.appendChild(editForm);
+    } else {
+        editForm.style.display = 'block';
+        editForm.querySelector('textarea').value = currentText;
+    }
+
+    // Hide original actions
+    const actionsDiv = commentItem.querySelector('.comment-actions');
+    if (actionsDiv) actionsDiv.style.display = 'none';
+}
+
+function cancelEditComment(commentId) {
+    const commentItem = document.getElementById(`comment-${commentId}`);
+    if (!commentItem) return;
+
+    const contentDiv = commentItem.querySelector('.comment-content');
+    const textP = contentDiv.querySelector('.comment-text');
+    const editForm = contentDiv.querySelector('.edit-comment-form');
+    const actionsDiv = commentItem.querySelector('.comment-actions');
+
+    if (textP) textP.style.display = 'block';
+    if (editForm) editForm.style.display = 'none';
+    if (actionsDiv) actionsDiv.style.display = 'flex';
+}
+
+function submitEditComment(commentId) {
+    const commentItem = document.getElementById(`comment-${commentId}`);
+    if (!commentItem) return;
+
+    const contentDiv = commentItem.querySelector('.comment-content');
+    const textP = contentDiv.querySelector('.comment-text');
+    const editForm = contentDiv.querySelector('.edit-comment-form');
+    const textarea = editForm.querySelector('textarea');
+    const newText = textarea.value;
+
+    if (newText.trim().length === 0) {
+        alert('댓글 내용을 입력해주세요.');
+        return;
+    }
+
+    // Update text
+    textP.innerText = newText;
+
+    // Revert view
+    cancelEditComment(commentId);
+    
+    // In a real app, you would send an API request here.
+    alert('댓글이 수정되었습니다.');
 }
 
 // Modal Logic
