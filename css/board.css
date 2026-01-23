@@ -365,7 +365,7 @@
     text-align: center;
 }
 
-/* Post Edit Form Styles */
+/* Post Edit & Create Form Styles */
 .edit-container {
     max-width: 600px;
     margin: 40px auto;
@@ -454,10 +454,11 @@
     color: #333;
 }
 
+/* Shared submit button style for edit and create */
 .submit-btn-full {
     width: 100%;
     padding: 12px;
-    background-color: #9284f7; /* Matching the purple button in image */
+    background-color: #ACA0EB; /* Default disabled-like color but opacity changes */
     color: white;
     border: none;
     border-radius: 8px;
@@ -465,9 +466,22 @@
     font-weight: 700;
     cursor: pointer;
     margin-top: 20px;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, opacity 0.2s;
 }
 
-.submit-btn-full:hover {
-    background-color: #7F6AEE;
+/* Specific state for disabled (create page requirement) */
+.submit-btn-full:disabled {
+    background-color: #ACA0EB; /* Keep color but maybe different visual cue if needed */
+    opacity: 1; /* Requirement says color change, let's stick to background color swap via class */
+    cursor: not-allowed;
+}
+
+/* Active state */
+.submit-btn-full.active {
+    background-color: #7F6AEE; /* The active color requested */
+    cursor: pointer;
+}
+
+.submit-btn-full:not(:disabled):hover {
+     background-color: #7F6AEE;
 }

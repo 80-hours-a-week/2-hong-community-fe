@@ -268,16 +268,68 @@ function initEditPage() {
     const fileNameDisplay = document.getElementById('file-name');
     const fileInput = document.getElementById('file-input');
 
-    titleInput.value = dummyData.title;
-    contentInput.value = dummyData.content;
-    fileNameDisplay.innerText = dummyData.image;
+    if (titleInput) titleInput.value = dummyData.title;
+    if (contentInput) contentInput.value = dummyData.content;
+    if (fileNameDisplay) fileNameDisplay.innerText = dummyData.image;
+
+    // Title Limit Enforcement
+    if (titleInput) {
+        titleInput.addEventListener('input', () => {
+            if (titleInput.value.length > 26) {
+                titleInput.value = titleInput.value.substring(0, 26);
+            }
+        });
+    }
+
+    // File Input Change
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileNameDisplay.innerText = e.target.files[0].name;
+            }
+        });
+    }
+}
+
+function handlePostUpdate(event) {
+    event.preventDefault();
+    alert('게시글이 수정되었습니다.');
+    location.href = 'post_detail.html';
+}
+
+// Create Page Logic
+function initCreatePage() {
+    const createForm = document.getElementById('create-form');
+    if (!createForm) return;
+
+    const titleInput = document.getElementById('create-title-input');
+    const contentInput = document.getElementById('create-content-input');
+    const submitBtn = document.getElementById('create-submit-btn');
+    const fileNameDisplay = document.getElementById('create-file-name');
+    const fileInput = document.getElementById('create-file-input');
 
     // Title Limit Enforcement
     titleInput.addEventListener('input', () => {
         if (titleInput.value.length > 26) {
             titleInput.value = titleInput.value.substring(0, 26);
         }
+        checkFormValidity();
     });
+
+    contentInput.addEventListener('input', checkFormValidity);
+
+    function checkFormValidity() {
+        const isTitleFilled = titleInput.value.trim().length > 0;
+        const isContentFilled = contentInput.value.trim().length > 0;
+
+        if (isTitleFilled && isContentFilled) {
+            submitBtn.disabled = false;
+            submitBtn.classList.add('active');
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.remove('active');
+        }
+    }
 
     // File Input Change
     fileInput.addEventListener('change', (e) => {
@@ -287,15 +339,20 @@ function initEditPage() {
     });
 }
 
-function handlePostUpdate(event) {
+function handlePostCreate(event) {
     event.preventDefault();
-    
-    // In a real app, we would collect data and send to API
-    // const title = document.getElementById('edit-title-input').value;
-    // const content = document.getElementById('edit-content-input').value;
-    
-    alert('게시글이 수정되었습니다.');
-    location.href = 'post_detail.html';
+
+    const titleInput = document.getElementById('create-title-input');
+    const contentInput = document.getElementById('create-content-input');
+
+    // Double check just in case disabled attribute is tampered
+    if (titleInput.value.trim().length === 0 || contentInput.value.trim().length === 0) {
+        alert('*제목, 내용을 모두 작성해주세요');
+        return;
+    }
+
+    alert('게시글 작성이 완료되었습니다.'); // Assuming alert message for creation
+    location.href = 'post_list.html';
 }
 
 
@@ -314,4 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Edit Page Logic
     initEditPage();
+
+    // Create Page Logic
+    initCreatePage();
 });
