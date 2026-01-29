@@ -2,27 +2,21 @@
 
 const BASE_URL = "http://localhost:8000";
 const STORAGE_KEYS = {
-    ACCESS_TOKEN: 'accessToken',
     USER_INFO: 'userInfo'
 };
 
 /**
  * Fetch API Wrapper
  * - Base URL 자동 적용
- * - Authorization 헤더 자동 적용 (토큰 존재 시)
  * - JSON 응답 처리 및 에러 핸들링
+ * - credentials: 'include' (쿠키/세션 전송)
  */
 async function fetchAPI(endpoint, options = {}) {
     const url = `${BASE_URL}${endpoint}`;
-    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
 
     const defaultHeaders = {
         'Content-Type': 'application/json',
     };
-
-    if (token) {
-        defaultHeaders['Authorization'] = `Bearer ${token}`;
-    }
 
     // FormData 전송 시 Content-Type 헤더 제거 (브라우저가 자동 설정)
     if (options.body instanceof FormData) {
@@ -35,6 +29,7 @@ async function fetchAPI(endpoint, options = {}) {
             ...defaultHeaders,
             ...options.headers,
         },
+        credentials: 'include' // 세션 쿠키 전송을 위해 필수
     };
 
     try {
@@ -48,11 +43,10 @@ async function fetchAPI(endpoint, options = {}) {
         }
 
         if (!response.ok) {
-            // 401 Unauthorized 처리 (예: 토큰 만료 시 로그아웃)
+            // 401 Unauthorized 처리 (예: 세션 만료 시 로그아웃)
             if (response.status === 401) {
                 console.warn('Unauthorized. Please login again.');
-                // 필요 시 자동 로그아웃 로직 추가
-                // localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+                // 필요 시 자동 로그아웃 로직 추가 (화면 이동 등)
                 // window.location.href = '/pages/auth/login.html';
             }
             // 백엔드 에러 메시지 포함하여 throw

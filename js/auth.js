@@ -68,9 +68,26 @@ function initLoginPage() {
     if (passwordInput) passwordInput.addEventListener('input', validatePassword);
 }
 
-function handleLogin(event) {
+async function handleLogin(event) {
     event.preventDefault();
-    location.href = '../board/post_list.html';
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+        const response = await API.auth.login(email, password);
+        
+        // 유저 정보 저장 (세션은 브라우저 쿠키로 자동 관리됨)
+        localStorage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify({
+            id: response.data.user.id,
+            email: response.data.user.email,
+            nickname: response.data.user.nickname
+        }));
+
+        location.href = '../board/post_list.html';
+    } catch (error) {
+        console.error(error);
+        alert(error.code === 'INVALID_CREDENTIALS' ? '이메일 또는 비밀번호가 일치하지 않습니다.' : '로그인 중 오류가 발생했습니다.');
+    }
 }
 
 // Signup Page Logic
@@ -89,6 +106,40 @@ function initSignupPage() {
                 fileNameDisplay.innerText = '파일을 선택해주세요.';
             }
         });
+    }
+}
+
+async function handleSignup(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const passwordConfirm = document.getElementById('password-confirm').value;
+    const nickname = document.getElementById('nickname').value.trim();
+
+    if (password !== passwordConfirm) {
+        alert('비밀번호가 일치하지 않습니다.');
+        return;
+    }
+
+    try {
+        await API.auth.signup({
+            email,
+            password,
+            nickname
+        });
+
+        alert('회원가입이 완료되었습니다. 로그인해 주세요.');
+        location.href = 'login.html';
+    } catch (error) {
+        console.error(error);
+        if (error.code === 'EMAIL_ALREADY_EXISTS') {
+            alert('이미 사용 중인 이메일입니다.');
+        } else if (error.code === 'NICKNAME_ALREADY_EXISTS') {
+            alert('이미 사용 중인 닉네임입니다.');
+        } else {
+            alert('회원가입 중 오류가 발생했습니다.');
+        }
     }
 }
 

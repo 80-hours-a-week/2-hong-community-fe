@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dropdown.innerHTML = `
             <a href="../../pages/user/profile_edit.html" class="dropdown-item">회원정보수정</a>
             <a href="../../pages/user/password_edit.html" class="dropdown-item">비밀번호수정</a>
-            <a href="../../pages/auth/login.html" class="dropdown-item">로그아웃</a>
+            <a href="#" id="logout-btn" class="dropdown-item">로그아웃</a>
         `;
         
         // Append to container (header-container is relative)
@@ -24,6 +24,22 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation(); // Prevent closing immediately
             dropdown.classList.toggle('show');
         });
+
+        // Logout Logic
+        const logoutBtn = dropdown.querySelector('#logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                try {
+                    await API.auth.logout();
+                } catch (error) {
+                    console.error('Logout failed:', error);
+                } finally {
+                    localStorage.removeItem(STORAGE_KEYS.USER_INFO);
+                    window.location.href = '../../pages/auth/login.html';
+                }
+            });
+        }
 
         // Close on outside click
         document.addEventListener('click', (e) => {
