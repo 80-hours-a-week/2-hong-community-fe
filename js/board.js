@@ -127,6 +127,10 @@ async function loadPosts() {
         }
     } catch (error) {
         console.error('Failed to load posts:', error);
+        if (error.status === 401) {
+            alert('조회 권한이 없습니다. 로그인 해 주세요.');
+            history.back();
+        }
     } finally {
         isLoading = false;
     }
@@ -674,6 +678,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // List Page Logic
     const postList = document.querySelector('.post-list');
     if (postList) {
+        // Check for login status
+        const userInfo = localStorage.getItem(STORAGE_KEYS.USER_INFO);
+        if (!userInfo) {
+            alert('조회 권한이 없습니다. 로그인 해 주세요.');
+            history.back();
+            return;
+        }
+
         postList.innerHTML = '';
         loadPosts();
         window.addEventListener('scroll', handleScroll);
