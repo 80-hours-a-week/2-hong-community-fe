@@ -657,11 +657,13 @@ async function handlePostCreate(event) {
         });
 
         alert('게시글 작성이 완료되었습니다.');
+        // 성공 시 목록 페이지로 이동
         location.href = 'post_list.html';
 
     } catch (error) {
         console.error('Create failed:', error);
         alert('게시글 등록에 실패했습니다.');
+        // 실패 시 페이지 이동 없음 (그대로 대기)
     }
 }
 
