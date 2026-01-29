@@ -597,11 +597,22 @@ function initCreatePage() {
     const createForm = document.getElementById('create-form');
     if (!createForm) return;
 
+    // Login check for create page
+    const userInfo = localStorage.getItem(STORAGE_KEYS.USER_INFO);
+    if (!userInfo) {
+        alert('로그인이 필요합니다.');
+        location.href = '../auth/login.html';
+        return;
+    }
+
     const titleInput = document.getElementById('create-title-input');
     const contentInput = document.getElementById('create-content-input');
     const submitBtn = document.getElementById('create-submit-btn');
     const fileNameDisplay = document.getElementById('create-file-name');
     const fileInput = document.getElementById('create-file-input');
+
+    // Attach Submit Listener
+    createForm.addEventListener('submit', handlePostCreate);
 
     // Title Limit Enforcement
     titleInput.addEventListener('input', () => {
@@ -648,7 +659,7 @@ async function handlePostCreate(event) {
     }
 
     try {
-        let imageUrl = '';
+        let imageUrl = null;
         if (fileInput.files.length > 0) {
             imageUrl = await uploadImage(fileInput.files[0]);
         }
@@ -662,7 +673,7 @@ async function handlePostCreate(event) {
 
         alert('게시글 작성이 완료되었습니다.');
         // 성공 시 목록 페이지로 이동
-        location.href = 'post_list.html';
+        window.location.replace('post_list.html');
 
     } catch (error) {
         console.error('Create failed:', error);

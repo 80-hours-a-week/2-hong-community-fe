@@ -238,16 +238,8 @@ async function handlePasswordUpdate(event) {
     event.preventDefault();
     const password = document.getElementById('password').value;
 
-    // UI에 현재 비밀번호 필드가 없어 프롬프트로 대체
-    const currentPassword = prompt("보안을 위해 현재 비밀번호를 입력해주세요:");
-    if (!currentPassword) {
-        alert("취소되었습니다.");
-        return;
-    }
-
     try {
         await API.users.updatePassword({
-            currentPassword: currentPassword,
             password: password
         });
         
@@ -265,7 +257,8 @@ async function handlePasswordUpdate(event) {
     } catch (error) {
         console.error('Password update failed:', error);
         if (error.status === 401) {
-            alert('현재 비밀번호가 일치하지 않습니다.');
+            alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+            location.href = '../../pages/auth/login.html';
         } else {
             alert('비밀번호 수정에 실패했습니다.');
         }

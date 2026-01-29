@@ -100,7 +100,7 @@ const API = {
             method: 'PATCH',
             body: JSON.stringify(data)
         }),
-        // 비밀번호 수정 (currentPassword, password 필요)
+        // 비밀번호 수정 (password 필요)
         updatePassword: (data) => fetchAPI('/v1/users/password', {
             method: 'PATCH',
             body: JSON.stringify(data)
