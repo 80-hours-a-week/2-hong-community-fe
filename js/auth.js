@@ -68,9 +68,27 @@ function initLoginPage() {
     if (passwordInput) passwordInput.addEventListener('input', validatePassword);
 }
 
-function handleLogin(event) {
+async function handleLogin(event) {
     event.preventDefault();
-    location.href = '../board/post_list.html';
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+        const response = await API.auth.login(email, password);
+        
+        // 유저 정보 저장 (세션은 브라우저 쿠키로 자동 관리됨)
+        localStorage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify({
+            id: response.data.user.id,
+            email: response.data.user.email,
+            nickname: response.data.user.nickname,
+            profileImageUrl: response.data.user.profileImageUrl
+        }));
+
+        location.href = '../board/post_list.html';
+    } catch (error) {
+        console.error(error);
+        alert(error.code === 'INVALID_CREDENTIALS' ? '이메일 또는 비밀번호가 일치하지 않습니다.' : '로그인 중 오류가 발생했습니다.');
+    }
 }
 
 // Signup Page Logic
@@ -89,6 +107,58 @@ function initSignupPage() {
                 fileNameDisplay.innerText = '파일을 선택해주세요.';
             }
         });
+    }
+}
+
+async function handleSignup(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const passwordConfirm = document.getElementById('password-confirm').value;
+    const nickname = document.getElementById('nickname').value.trim();
+    const fileInput = document.getElementById('profile-file-input');
+
+    if (password !== passwordConfirm) {
+        alert('비밀번호가 일치하지 않습니다.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('nickname', nickname);
+    
+    if (fileInput && fileInput.files.length > 0) {
+        formData.append('profileImage', fileInput.files[0]);
+    }
+
+    try {
+        await API.auth.signup(formData);
+
+        alert('회원가입이 완료되었습니다. 로그인해 주세요.');
+        location.href = 'login.html';
+    } catch (error) {
+        console.error(error);
+        if (error.code === 'EMAIL_ALREADY_EXISTS') {
+            alert('이미 사용 중인 이메일입니다.');
+        } else if (error.code === 'NICKNAME_ALREADY_EXISTS') {
+            alert('이미 사용 중인 닉네임입니다.');
+        } else if (error.data) {
+            // 유효성 검사 에러 상세 표시
+            // error.data가 객체인 경우 메시지 추출
+            let msg = '';
+            if (typeof error.data === 'object') {
+                for (const key in error.data) {
+                    msg += `${key}: ${error.data[key]}\n`;
+                }
+            } else {
+                msg = JSON.stringify(error.data);
+            }
+            alert(`입력값이 올바르지 않습니다.\n${msg}`);
+        } else {
+            alert('회원가입 중 오류가 발생했습니다.');
+        }
     }
 }
 

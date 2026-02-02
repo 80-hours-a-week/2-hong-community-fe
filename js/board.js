@@ -74,50 +74,75 @@ function truncateTitle(title) {
     return title;
 }
 
+function getImageUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('/')) {
+        return `${window.BASE_URL}${url}`;
+    }
+    return url;
+}
+
 // Render List
 function createPostElement(post) {
     const article = document.createElement('article');
     article.className = 'post-card';
-    article.onclick = () => location.href = 'post_detail.html';
+    article.onclick = () => location.href = `post_detail.html?id=${post.postId}`;
+
+    // 프로필 이미지가 없을 경우 대비 (CSS에서 기본 배경색 처리 또는 기본 이미지)
+    const imageUrl = getImageUrl(post.author.profileImageUrl);
+    const profileStyle = imageUrl 
+        ? `background-image: url('${imageUrl}'); background-size: cover; background-position: center;` 
+        : '';
 
     article.innerHTML = `
         <div class="post-header">
             <h2 class="post-title">${truncateTitle(post.title)}</h2>
             <div class="post-meta">
                 <div class="post-stats">
-                    <span>좋아요 ${formatCountDisplay(post.likes)}</span>
-                    <span>댓글 ${formatCountDisplay(post.comments)}</span>
-                    <span>조회수 ${formatCountDisplay(post.views)}</span>
+                    <span>좋아요 ${formatCountDisplay(post.likeCount)}</span>
+                    <span>댓글 ${formatCountDisplay(post.commentCount)}</span>
+                    <span>조회수 ${formatCountDisplay(post.hits)}</span>
                 </div>
-                <span class="post-date">${formatDate(post.date)}</span>
+                <span class="post-date">${formatDate(post.createdAt)}</span>
             </div>
         </div>
         <hr class="post-divider">
         <div class="post-footer">
-            <div class="author-avatar"></div>
-            <span class="author-name">${post.author}</span>
+            <div class="author-avatar" style="${profileStyle}"></div>
+            <span class="author-name">${post.author.nickname}</span>
         </div>
     `;
     return article;
 }
 
-function loadPosts() {
+async function loadPosts() {
     if (isLoading) return;
     isLoading = true;
 
-    // Simulate API delay
-    setTimeout(() => {
-        const newPosts = generateDummyPosts(limit);
-        const postList = document.querySelector('.post-list');
+    try {
+        const response = await API.posts.getList(page, limit);
+        const posts = response.data;
         
+        const postList = document.querySelector('.post-list');
         if (postList) {
-            newPosts.forEach(post => {
-                postList.appendChild(createPostElement(post));
-            });
-            page++;
+            if (posts.length > 0) {
+                posts.forEach(post => {
+                    postList.appendChild(createPostElement(post));
+                });
+                page++;
+            } else if (page === 1) {
+                postList.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">등록된 게시글이 없습니다.</div>';
+            }
         }
+    } catch (error) {
+        console.error('Failed to load posts:', error);
+        if (error.status === 401) {
+            alert('조회 권한이 없습니다. 로그인 해 주세요.');
+            history.back();
+        }
+    } finally {
         isLoading = false;
-    }, 500);
+    }
 }
 
 // Infinite Scroll for List
@@ -129,38 +154,121 @@ function handleScroll() {
 }
 
 // Detail Page Logic
-function initDetailPage() {
+async function initDetailPage() {
     const titleEl = document.getElementById('detail-title');
     if (!titleEl) return; // Not on detail page
 
-    // Dummy Data for Detail
-    const dummyDetail = {
-        title: '제목 1',
-        author: '더미 작성자 1',
-        date: '2021-01-01T00:00:00',
-        likes: 123,
-        views: 123,
-        commentsCount: 123
-    };
+    // 1. Get Post ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('id');
 
-    // Render Header
-    document.getElementById('detail-title').innerText = dummyDetail.title;
-    document.getElementById('detail-author').innerText = dummyDetail.author;
-    document.getElementById('detail-date').innerText = formatDate(dummyDetail.date);
+    if (!postId) {
+        alert('잘못된 접근입니다.');
+        location.href = 'post_list.html';
+        return;
+    }
 
-    // Render Stats
-    updateLikeDisplay(dummyDetail.likes);
-    document.getElementById('detail-views').innerText = formatCountDisplay(dummyDetail.views);
-    document.getElementById('detail-comments').innerText = formatCountDisplay(dummyDetail.commentsCount);
+    try {
+        // 2. Fetch Post Detail
+        const postResponse = await API.posts.getDetail(postId);
+        const post = postResponse.data;
 
-    // Render Comments
+        // 3. Render Post Info
+        document.getElementById('detail-title').innerText = post.title;
+        document.getElementById('detail-author').innerText = post.author.nickname;
+        document.getElementById('detail-date').innerText = formatDate(post.createdAt);
+        
+        // Author Avatar
+        const authorAvatar = document.querySelector('.detail-header .author-avatar');
+        if (authorAvatar) {
+            const avatarUrl = getImageUrl(post.author.profileImageUrl);
+            if (avatarUrl) {
+                authorAvatar.style.backgroundImage = `url('${avatarUrl}')`;
+                authorAvatar.style.backgroundSize = 'cover';
+                authorAvatar.style.backgroundPosition = 'center';
+            }
+        }
+
+        updateLikeDisplay(post.likeCount, post.likedBy); // Pass full list or check status
+        
+        document.getElementById('detail-views').innerText = formatCountDisplay(post.hits);
+        document.getElementById('detail-comments').innerText = formatCountDisplay(post.commentCount);
+
+        // Content (Handle newlines)
+        const contentHtml = post.content.replace(/\n/g, '<br>');
+        document.querySelector('.post-text').innerHTML = contentHtml;
+
+        // Image
+        const imagePlaceholder = document.querySelector('.post-image-placeholder');
+        if (post.file && post.file.fileUrl) {
+            // Remove placeholder bg and add img
+            const fileUrl = getImageUrl(post.file.fileUrl);
+            imagePlaceholder.innerHTML = `<img src="${fileUrl}" style="width: 100%; height: auto; border-radius: 8px;" alt="Post Image">`;
+            imagePlaceholder.style.backgroundColor = 'transparent';
+            imagePlaceholder.style.height = 'auto';
+        } else {
+            imagePlaceholder.style.display = 'none';
+        }
+
+        // Author Check (Current User)
+        const currentUserStr = localStorage.getItem(STORAGE_KEYS.USER_INFO);
+        const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+        const currentUserId = currentUser ? currentUser.id : null;
+
+        // Show/Hide Edit & Delete Buttons
+        const editActions = document.querySelector('.detail-header .edit-actions');
+        if (currentUserId && post.author.userId === currentUserId) {
+            editActions.style.display = 'flex';
+            
+            // Set OnClick handlers
+            const editBtn = editActions.querySelector('button:first-child'); // First button is Edit
+            editBtn.onclick = () => location.href = `post_edit.html?id=${postId}`;
+            
+            const deleteBtn = editActions.querySelector('button:last-child'); // Second is Delete
+            deleteBtn.onclick = () => showDeleteModal('post', postId);
+        } else {
+            editActions.style.display = 'none';
+        }
+
+        // Check if Liked
+        if (currentUserId && post.likedBy && post.likedBy.includes(currentUserId)) {
+            isLiked = true;
+            document.getElementById('like-btn').classList.add('active');
+        } else {
+            isLiked = false;
+             document.getElementById('like-btn').classList.remove('active');
+        }
+
+        // 4. Load Comments
+        loadComments(postId, currentUserId);
+
+        // 5. Setup Comment Input
+        setupCommentInput(postId);
+
+    } catch (error) {
+        console.error('Failed to load post detail:', error);
+        alert('게시글을 불러오는 데 실패했습니다.');
+        location.href = 'post_list.html';
+    }
+}
+
+async function loadComments(postId, currentUserId) {
     const commentList = document.getElementById('comment-list');
-    const comments = generateDummyComments(3);
-    comments.forEach(comment => {
-        commentList.appendChild(createCommentElement(comment));
-    });
+    commentList.innerHTML = ''; // Clear
 
-    // Event Listeners for Input
+    try {
+        const response = await API.comments.getList(postId);
+        const comments = response.data;
+        
+        comments.forEach(comment => {
+            commentList.appendChild(createCommentElement(comment, currentUserId));
+        });
+    } catch (error) {
+        console.error('Failed to load comments:', error);
+    }
+}
+
+function setupCommentInput(postId) {
     const commentInput = document.getElementById('comment-input');
     const submitBtn = document.getElementById('comment-submit-btn');
     
@@ -174,51 +282,104 @@ function initDetailPage() {
                 submitBtn.classList.remove('active');
             }
         });
+
+        submitBtn.onclick = async () => {
+            const content = commentInput.value.trim();
+            if (!content) return;
+
+            try {
+                await API.comments.create(postId, content);
+                commentInput.value = '';
+                submitBtn.disabled = true;
+                submitBtn.classList.remove('active');
+                
+                // Reload comments
+                const currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
+                loadComments(postId, currentUser.id);
+
+                // Update Comment Count (Optional: fetch detail again or just increment UI)
+                const countSpan = document.getElementById('detail-comments');
+                let count = parseInt(countSpan.innerText.replace('k', '000')) || 0; // Simple parse
+                countSpan.innerText = formatCountDisplay(count + 1);
+
+            } catch (error) {
+                alert('댓글 등록에 실패했습니다.');
+            }
+        };
     }
 }
 
-function updateLikeDisplay(count) {
+function updateLikeDisplay(count, likedBy) {
     const likeBtn = document.getElementById('like-btn');
     const countSpan = document.getElementById('detail-likes');
     
     if (countSpan) countSpan.innerText = formatCountDisplay(count);
-    
-    if (likeBtn) {
+    // Active class is handled in initDetailPage based on user
+}
+
+async function toggleLike() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('id');
+    if (!postId) return;
+
+    try {
+        let response;
         if (isLiked) {
-            likeBtn.classList.add('active');
+            response = await API.posts.unlike(postId);
+            isLiked = false;
+            document.getElementById('like-btn').classList.remove('active');
         } else {
-            likeBtn.classList.remove('active');
+            response = await API.posts.like(postId);
+            isLiked = true;
+            document.getElementById('like-btn').classList.add('active');
+        }
+        
+        // Update count
+        updateLikeDisplay(response.data.likeCount);
+
+    } catch (error) {
+        console.error('Like toggle failed:', error);
+        if (error.status === 401) {
+            alert('로그인이 필요합니다.');
+        } else if (error.status === 409) {
+             // Conflict (already liked/unliked), just reload or ignore
+             location.reload();
         }
     }
 }
 
-function toggleLike() {
-    const countSpan = document.getElementById('detail-likes');
-    let currentCount = parseInt(countSpan.innerText.replace('k', '000')); // Simple parse for now
-    
-    let baseCount = 123;
-    
-    isLiked = !isLiked;
-    updateLikeDisplay(isLiked ? baseCount + 1 : baseCount);
-}
-
-function createCommentElement(comment) {
+function createCommentElement(comment, currentUserId) {
     const div = document.createElement('div');
     div.className = 'comment-item';
-    div.id = `comment-${comment.id}`;
+    div.id = `comment-${comment.commentId}`;
+    
+    // 프로필 이미지 스타일
+    const imageUrl = getImageUrl(comment.author.profileImageUrl);
+    const profileStyle = imageUrl 
+        ? `background-image: url('${imageUrl}'); background-size: cover; background-position: center;` 
+        : '';
+
+    let buttonsHtml = '';
+    if (currentUserId && comment.author.userId === currentUserId) {
+        buttonsHtml = `
+            <div class="edit-actions comment-actions">
+                <button class="btn-small" onclick="toggleEditComment(${comment.commentId})">수정</button>
+                <button class="btn-small" onclick="showDeleteModal('comment', ${comment.commentId})">삭제</button>
+            </div>
+        `;
+    }
+
     div.innerHTML = `
-        <div class="author-avatar"></div>
+        <div class="author-avatar" style="${profileStyle}"></div>
         <div class="comment-content">
             <div class="comment-header">
-                <span class="author-name">${comment.author}</span>
-                <span class="comment-date">${formatDate(comment.date)}</span>
+                <span class="author-name">${comment.author.nickname}</span>
+                <span class="comment-date">${formatDate(comment.createdAt)}</span>
             </div>
             <p class="comment-text">${comment.content}</p>
+            <!-- Edit Form Placeholder -->
         </div>
-        <div class="edit-actions comment-actions">
-            <button class="btn-small" onclick="toggleEditComment(${comment.id})">수정</button>
-            <button class="btn-small" onclick="showDeleteModal('comment', ${comment.id})">삭제</button>
-        </div>
+        ${buttonsHtml}
     `;
     return div;
 }
@@ -272,7 +433,7 @@ function cancelEditComment(commentId) {
     if (actionsDiv) actionsDiv.style.display = 'flex';
 }
 
-function submitEditComment(commentId) {
+async function submitEditComment(commentId) {
     const commentItem = document.getElementById(`comment-${commentId}`);
     if (!commentItem) return;
 
@@ -287,14 +448,18 @@ function submitEditComment(commentId) {
         return;
     }
 
-    // Update text
-    textP.innerText = newText;
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const postId = urlParams.get('id');
 
-    // Revert view
-    cancelEditComment(commentId);
-    
-    // In a real app, you would send an API request here.
-    alert('댓글이 수정되었습니다.');
+        await API.comments.update(postId, commentId, newText);
+
+        textP.innerText = newText;
+        cancelEditComment(commentId);
+    } catch (error) {
+        console.error('Comment update failed:', error);
+        alert('댓글 수정에 실패했습니다.');
+    }
 }
 
 // Modal Logic
@@ -320,64 +485,137 @@ function closeDeleteModal() {
     currentDeleteTarget = null;
 }
 
-function confirmDelete() {
+async function confirmDelete() {
     if (!currentDeleteTarget) return;
 
-    if (currentDeleteTarget.type === 'post') {
-        alert('게시글이 삭제되었습니다.');
-        location.href = 'post_list.html';
-    } else if (currentDeleteTarget.type === 'comment') {
-        const commentEl = document.getElementById(`comment-${currentDeleteTarget.id}`);
-        if (commentEl) commentEl.remove();
-        alert('댓글이 삭제되었습니다.');
+    try {
+        if (currentDeleteTarget.type === 'post') {
+            await API.posts.delete(currentDeleteTarget.id);
+            alert('게시글이 삭제되었습니다.');
+            location.href = 'post_list.html';
+        } else if (currentDeleteTarget.type === 'comment') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const postId = urlParams.get('id');
+
+            await API.comments.delete(postId, currentDeleteTarget.id);
+            
+            const commentEl = document.getElementById(`comment-${currentDeleteTarget.id}`);
+            if (commentEl) commentEl.remove();
+
+            // Update Count UI
+            const countSpan = document.getElementById('detail-comments');
+            let count = parseInt(countSpan.innerText.replace('k', '000')) || 0;
+            countSpan.innerText = formatCountDisplay(Math.max(0, count - 1));
+
+            closeDeleteModal();
+        }
+    } catch (error) {
+        console.error('Delete failed:', error);
+        alert('삭제에 실패했습니다.');
         closeDeleteModal();
     }
 }
 
+// Helper: Image Upload
+async function uploadImage(file) {
+    if (!file) return null;
+    const formData = new FormData();
+    formData.append('postFile', file);
+    const response = await API.posts.uploadImage(formData);
+    
+    if (!response || !response.data) {
+        throw new Error('Image upload response invalid');
+    }
+    return response.data.postFileUrl; 
+}
+
 // Edit Page Logic
-function initEditPage() {
+async function initEditPage() {
     const editForm = document.getElementById('edit-form');
     if (!editForm) return;
 
-    // Pre-fill Dummy Data
-    const dummyData = {
-        title: '제목 1',
-        content: `무엇을 얘기할까요? 아무말이라면, 삶은 항상 놀라운 모험이라고 생각합니다. 우리는 매일 새로운 경험을 하고 배우며 성장합니다. 때로는 어려움과 도전이 있지만, 그것들이 우리를 더 강하고 지혜롭게 만듭니다. 또한 우리는 주변의 사람들과 연결되며 사랑과 지지를 받습니다. 그래서 우리의 삶은 소중하고 의미가 있습니다.\n\n자연도 아름다운 이야기입니다. 우리 주변의 자연은 끝없는 아름다움과 신비로움을 담고 있습니다. 산, 바다, 숲, 하늘 등 모든 것이 우리를 놀라게 만들고 감동시킵니다. 자연은 우리의 생명과 안정을 지키며 우리에게 힘을 주는 곳입니다.\n\n마지막으로, 지식을 향한 탐구는 항상 흥미로운 여정입니다. 우리는 끝없는 지식의 바다에서 배우고 발견할 수 있으며, 이것이 우리를 더 깊이 이해하고 세상을 더 넓게 보게 해줍니다. 그런 의미에서, 삶은 놀라움과 경이로움으로 가득 차 있습니다. 새로운 경험을 즐기고 항상 앞으로 나아가는 것이 중요하다고 생각합니다.`,
-        image: '기존 파일 명'
-    };
-
-    const titleInput = document.getElementById('edit-title-input');
-    const contentInput = document.getElementById('edit-content-input');
-    const fileNameDisplay = document.getElementById('file-name');
-    const fileInput = document.getElementById('file-input');
-
-    if (titleInput) titleInput.value = dummyData.title;
-    if (contentInput) contentInput.value = dummyData.content;
-    if (fileNameDisplay) fileNameDisplay.innerText = dummyData.image;
-
-    // Title Limit Enforcement
-    if (titleInput) {
-        titleInput.addEventListener('input', () => {
-            if (titleInput.value.length > 26) {
-                titleInput.value = titleInput.value.substring(0, 26);
-            }
-        });
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('id');
+    if (!postId) {
+        alert('잘못된 접근입니다.');
+        location.href = 'post_list.html';
+        return;
     }
 
-    // File Input Change
-    if (fileInput) {
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                fileNameDisplay.innerText = e.target.files[0].name;
-            }
-        });
+    try {
+        const response = await API.posts.getDetail(postId);
+        const post = response.data;
+
+        const titleInput = document.getElementById('edit-title-input');
+        const contentInput = document.getElementById('edit-content-input');
+        const fileNameDisplay = document.getElementById('file-name');
+        
+        if (titleInput) titleInput.value = post.title;
+        if (contentInput) contentInput.value = post.content;
+        
+        if (post.file && post.file.fileUrl) {
+            if (fileNameDisplay) fileNameDisplay.innerText = post.file.fileUrl.split('/').pop();
+            editForm.dataset.originalFileUrl = post.file.fileUrl;
+        }
+
+        // Event Listeners (Title Limit, File Input)
+        if (titleInput) {
+            titleInput.addEventListener('input', () => {
+                if (titleInput.value.length > 26) {
+                    titleInput.value = titleInput.value.substring(0, 26);
+                }
+            });
+        }
+
+        const fileInput = document.getElementById('file-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    fileNameDisplay.innerText = e.target.files[0].name;
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Failed to load post for edit:', error);
+        alert('게시글 정보를 불러오지 못했습니다.');
+        location.href = 'post_list.html';
     }
 }
 
-function handlePostUpdate(event) {
+async function handlePostUpdate(event) {
     event.preventDefault();
-    alert('게시글이 수정되었습니다.');
-    location.href = 'post_detail.html';
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('id');
+
+    const title = document.getElementById('edit-title-input').value;
+    const content = document.getElementById('edit-content-input').value;
+    const fileInput = document.getElementById('file-input');
+
+    if (!title.trim() || !content.trim()) {
+        alert('제목과 내용을 입력해주세요.');
+        return;
+    }
+
+    try {
+        let fileUrl = document.getElementById('edit-form').dataset.originalFileUrl || null;
+
+        if (fileInput.files.length > 0) {
+            fileUrl = await uploadImage(fileInput.files[0]);
+        }
+
+        await API.posts.update(postId, {
+            title,
+            content,
+            fileUrl: fileUrl
+        });
+
+        alert('게시글이 수정되었습니다.');
+        location.href = `post_detail.html?id=${postId}`;
+    } catch (error) {
+        console.error('Update failed:', error);
+        alert('게시글 수정에 실패했습니다.');
+    }
 }
 
 // Create Page Logic
@@ -385,11 +623,22 @@ function initCreatePage() {
     const createForm = document.getElementById('create-form');
     if (!createForm) return;
 
+    // Login check for create page
+    const userInfo = localStorage.getItem(STORAGE_KEYS.USER_INFO);
+    if (!userInfo) {
+        alert('로그인이 필요합니다.');
+        location.href = '../auth/login.html';
+        return;
+    }
+
     const titleInput = document.getElementById('create-title-input');
     const contentInput = document.getElementById('create-content-input');
     const submitBtn = document.getElementById('create-submit-btn');
     const fileNameDisplay = document.getElementById('create-file-name');
     const fileInput = document.getElementById('create-file-input');
+
+    // Attach Submit Listener
+    createForm.addEventListener('submit', handlePostCreate);
 
     // Title Limit Enforcement
     titleInput.addEventListener('input', () => {
@@ -422,21 +671,51 @@ function initCreatePage() {
     });
 }
 
-function handlePostCreate(event) {
+async function handlePostCreate(event) {
     event.preventDefault();
 
-    const titleInput = document.getElementById('create-title-input');
-    const contentInput = document.getElementById('create-content-input');
+    const title = document.getElementById('create-title-input').value;
+    const content = document.getElementById('create-content-input').value;
+    const fileInput = document.getElementById('create-file-input');
+    const submitBtn = document.getElementById('create-submit-btn');
+    const currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
 
-    // Double check just in case disabled attribute is tampered
-    if (titleInput.value.trim().length === 0 || contentInput.value.trim().length === 0) {
-        alert('*제목, 내용을 모두 작성해주세요');
+    if (!title.trim() || !content.trim()) {
+        alert('제목과 내용을 모두 입력해주세요');
         return;
     }
 
-    alert('게시글 작성이 완료되었습니다.'); // Assuming alert message for creation
-    location.href = 'post_list.html';
+    // Disable button to prevent double submit
+    submitBtn.disabled = true;
+
+    try {
+        let imageUrl = null;
+        if (fileInput.files.length > 0) {
+            imageUrl = await uploadImage(fileInput.files[0]);
+        }
+
+        await API.posts.create({
+            title,
+            content,
+            image: imageUrl,
+            nickname: currentUser.nickname
+        });
+
+        alert('게시글 작성이 완료되었습니다.');
+        // 성공 시 목록 페이지로 이동
+        window.location.replace('post_list.html');
+
+    } catch (error) {
+        console.error('Create failed:', error);
+        alert('게시글 등록에 실패했습니다.');
+        // Re-enable button on failure
+        submitBtn.disabled = false;
+        if (title.trim() && content.trim()) {
+            submitBtn.classList.add('active');
+        }
+    }
 }
+
 
 
 // Init
@@ -444,6 +723,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // List Page Logic
     const postList = document.querySelector('.post-list');
     if (postList) {
+        // Check for login status
+        const userInfo = localStorage.getItem(STORAGE_KEYS.USER_INFO);
+        if (!userInfo) {
+            alert('조회 권한이 없습니다. 로그인 해 주세요.');
+            history.back();
+            return;
+        }
+
         postList.innerHTML = '';
         loadPosts();
         window.addEventListener('scroll', handleScroll);
