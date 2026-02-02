@@ -6,6 +6,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const headerContainer = document.querySelector('.header-container');
     const profileIcon = document.querySelector('.profile-icon');
 
+    // Load Profile Image
+    const userInfo = localStorage.getItem(STORAGE_KEYS.USER_INFO);
+    if (userInfo && profileIcon) {
+        try {
+            const user = JSON.parse(userInfo);
+            if (user.profileImageUrl) {
+                const img = profileIcon.querySelector('img');
+                if (img) {
+                    // Check if it's a relative path (starts with /)
+                    if (user.profileImageUrl.startsWith('/')) {
+                        img.src = `${window.BASE_URL}${user.profileImageUrl}`;
+                    } else {
+                        img.src = user.profileImageUrl;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to parse user info', e);
+        }
+    }
+
     if (headerContainer && profileIcon) {
         // Create Dropdown HTML
         const dropdown = document.createElement('div');

@@ -74,6 +74,14 @@ function truncateTitle(title) {
     return title;
 }
 
+function getImageUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('/')) {
+        return `${window.BASE_URL}${url}`;
+    }
+    return url;
+}
+
 // Render List
 function createPostElement(post) {
     const article = document.createElement('article');
@@ -81,8 +89,9 @@ function createPostElement(post) {
     article.onclick = () => location.href = `post_detail.html?id=${post.postId}`;
 
     // 프로필 이미지가 없을 경우 대비 (CSS에서 기본 배경색 처리 또는 기본 이미지)
-    const profileStyle = post.author.profileImageUrl 
-        ? `background-image: url('${post.author.profileImageUrl}'); background-size: cover; background-position: center;` 
+    const imageUrl = getImageUrl(post.author.profileImageUrl);
+    const profileStyle = imageUrl 
+        ? `background-image: url('${imageUrl}'); background-size: cover; background-position: center;` 
         : '';
 
     article.innerHTML = `
@@ -169,6 +178,17 @@ async function initDetailPage() {
         document.getElementById('detail-author').innerText = post.author.nickname;
         document.getElementById('detail-date').innerText = formatDate(post.createdAt);
         
+        // Author Avatar
+        const authorAvatar = document.querySelector('.detail-header .author-avatar');
+        if (authorAvatar) {
+            const avatarUrl = getImageUrl(post.author.profileImageUrl);
+            if (avatarUrl) {
+                authorAvatar.style.backgroundImage = `url('${avatarUrl}')`;
+                authorAvatar.style.backgroundSize = 'cover';
+                authorAvatar.style.backgroundPosition = 'center';
+            }
+        }
+
         updateLikeDisplay(post.likeCount, post.likedBy); // Pass full list or check status
         
         document.getElementById('detail-views').innerText = formatCountDisplay(post.hits);
@@ -182,7 +202,8 @@ async function initDetailPage() {
         const imagePlaceholder = document.querySelector('.post-image-placeholder');
         if (post.file && post.file.fileUrl) {
             // Remove placeholder bg and add img
-            imagePlaceholder.innerHTML = `<img src="${post.file.fileUrl}" style="width: 100%; height: auto; border-radius: 8px;" alt="Post Image">`;
+            const fileUrl = getImageUrl(post.file.fileUrl);
+            imagePlaceholder.innerHTML = `<img src="${fileUrl}" style="width: 100%; height: auto; border-radius: 8px;" alt="Post Image">`;
             imagePlaceholder.style.backgroundColor = 'transparent';
             imagePlaceholder.style.height = 'auto';
         } else {
@@ -333,8 +354,9 @@ function createCommentElement(comment, currentUserId) {
     div.id = `comment-${comment.commentId}`;
     
     // 프로필 이미지 스타일
-    const profileStyle = comment.author.profileImageUrl 
-        ? `background-image: url('${comment.author.profileImageUrl}'); background-size: cover; background-position: center;` 
+    const imageUrl = getImageUrl(comment.author.profileImageUrl);
+    const profileStyle = imageUrl 
+        ? `background-image: url('${imageUrl}'); background-size: cover; background-position: center;` 
         : '';
 
     let buttonsHtml = '';

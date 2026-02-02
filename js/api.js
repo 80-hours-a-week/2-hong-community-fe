@@ -78,10 +78,10 @@ const API = {
             method: 'POST',
             body: JSON.stringify({ email, password })
         }),
-        // 회원가입 (JSON 전송)
+        // 회원가입 (JSON or FormData)
         signup: (data) => fetchAPI('/v1/auth/signup', {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: data instanceof FormData ? data : JSON.stringify(data)
         }),
         // 이메일 중복 체크
         checkEmail: (email) => fetchAPI(`/v1/auth/emails/availability?email=${email}`),
@@ -161,3 +161,4 @@ const API = {
 // 전역 객체로 노출
 window.API = API;
 window.STORAGE_KEYS = STORAGE_KEYS;
+window.BASE_URL = BASE_URL;

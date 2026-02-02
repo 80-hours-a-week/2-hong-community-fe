@@ -116,18 +116,24 @@ async function handleSignup(event) {
     const password = document.getElementById('password').value;
     const passwordConfirm = document.getElementById('password-confirm').value;
     const nickname = document.getElementById('nickname').value.trim();
+    const fileInput = document.getElementById('profile-file-input');
 
     if (password !== passwordConfirm) {
         alert('비밀번호가 일치하지 않습니다.');
         return;
     }
 
+    const formData = new FormData();
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('nickname', nickname);
+    
+    if (fileInput && fileInput.files.length > 0) {
+        formData.append('profileImage', fileInput.files[0]);
+    }
+
     try {
-        await API.auth.signup({
-            email,
-            password,
-            nickname
-        });
+        await API.auth.signup(formData);
 
         alert('회원가입이 완료되었습니다. 로그인해 주세요.');
         location.href = 'login.html';

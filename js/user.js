@@ -36,7 +36,11 @@ async function initProfileEdit() {
             nicknameInput.dataset.original = user.nickname; // Store for dup check
         }
         if (profilePreview && user.profileImageUrl) {
-            profilePreview.src = user.profileImageUrl;
+            if (user.profileImageUrl.startsWith('/')) {
+                profilePreview.src = `${window.BASE_URL}${user.profileImageUrl}`;
+            } else {
+                profilePreview.src = user.profileImageUrl;
+            }
         }
 
     } catch (error) {
