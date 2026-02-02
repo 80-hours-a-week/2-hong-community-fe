@@ -80,7 +80,8 @@ async function handleLogin(event) {
         localStorage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify({
             id: response.data.user.id,
             email: response.data.user.email,
-            nickname: response.data.user.nickname
+            nickname: response.data.user.nickname,
+            profileImageUrl: response.data.user.profileImageUrl
         }));
 
         location.href = '../board/post_list.html';

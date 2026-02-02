@@ -522,6 +522,10 @@ async function uploadImage(file) {
     const formData = new FormData();
     formData.append('postFile', file);
     const response = await API.posts.uploadImage(formData);
+    
+    if (!response || !response.data) {
+        throw new Error('Image upload response invalid');
+    }
     return response.data.postFileUrl; 
 }
 
@@ -673,12 +677,16 @@ async function handlePostCreate(event) {
     const title = document.getElementById('create-title-input').value;
     const content = document.getElementById('create-content-input').value;
     const fileInput = document.getElementById('create-file-input');
+    const submitBtn = document.getElementById('create-submit-btn');
     const currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
 
     if (!title.trim() || !content.trim()) {
         alert('제목과 내용을 모두 입력해주세요');
         return;
     }
+
+    // Disable button to prevent double submit
+    submitBtn.disabled = true;
 
     try {
         let imageUrl = null;
@@ -700,7 +708,11 @@ async function handlePostCreate(event) {
     } catch (error) {
         console.error('Create failed:', error);
         alert('게시글 등록에 실패했습니다.');
-        // 실패 시 페이지 이동 없음 (그대로 대기)
+        // Re-enable button on failure
+        submitBtn.disabled = false;
+        if (title.trim() && content.trim()) {
+            submitBtn.classList.add('active');
+        }
     }
 }
 
