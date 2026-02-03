@@ -1,5 +1,5 @@
 # 2-hong-community-fe
-AWS AI School 2기 홍석현 프론트엔드 과제
+AWS AI School 2기 홍석현 커뮤니티 프론트엔드 과제
 
 ## 🛠 기술 스택 (Tech Stack)
 - **Languages**: HTML5, CSS3, JavaScript (ES6+)
